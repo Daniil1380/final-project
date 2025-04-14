@@ -7,7 +7,7 @@ import (
 	"final-project/repositories"
 	"final-project/scheduler"
 	"final-project/services"
-	"final-project/utils" // Добавлен импорт
+	"final-project/utils"
 	"fmt"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"

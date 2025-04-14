@@ -1,4 +1,3 @@
-Based on the provided code context, I'll create a comprehensive README.md file in Russian that explains how to use the financial service, supported commands, and testing instructions.
 
 ```markdown
 # Финансовый сервис
