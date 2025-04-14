@@ -153,3 +153,17 @@ func (s *AccountService) TransferFunds(fromAccountID, toAccountID int, amount fl
 
 	return s.TransactionRepo.CreateTransaction(inTransaction)
 }
+
+func (s *AccountService) GetAccountTransactions(accountID int, userID int) ([]models.Transaction, error) {
+	// Проверяем, принадлежит ли счет пользователю
+	account, err := s.AccountRepo.GetAccountByID(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	if account.UserID != userID {
+		return nil, errors.New("account does not belong to user")
+	}
+
+	return s.TransactionRepo.GetTransactionsByAccount(accountID)
+}

@@ -10,14 +10,17 @@ import (
 )
 
 type LoanService struct {
-	LoanRepo    *repositories.LoanRepository
-	AccountRepo *repositories.AccountRepository
+	LoanRepo     *repositories.LoanRepository
+	AccountRepo  *repositories.AccountRepository
+	ScheduleRepo *repositories.PaymentScheduleRepository
 }
 
-func NewLoanService(loanRepo *repositories.LoanRepository, accountRepo *repositories.AccountRepository) *LoanService {
+func NewLoanService(loanRepo *repositories.LoanRepository, accountRepo *repositories.AccountRepository,
+	scheduleRepo *repositories.PaymentScheduleRepository) *LoanService {
 	return &LoanService{
-		LoanRepo:    loanRepo,
-		AccountRepo: accountRepo,
+		LoanRepo:     loanRepo,
+		AccountRepo:  accountRepo,
+		ScheduleRepo: scheduleRepo,
 	}
 }
 

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"final-project/models"
 	"final-project/services"
 	"final-project/utils"
 	"net/http"
@@ -113,4 +114,40 @@ func (h *AccountHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.RespondJSON(w, http.StatusOK, map[string]string{"message": "Transfer successful"})
+}
+
+func (h *AccountHandler) GetAccountAnalytics(w http.ResponseWriter, r *http.Request) {
+	userID := utils.GetUserIDFromContext(r)
+	accountID, err := strconv.Atoi(mux.Vars(r)["id"])
+	if err != nil {
+		http.Error(w, "Invalid account ID", http.StatusBadRequest)
+		return
+	}
+
+	transactions, err := h.AccountService.GetAccountTransactions(accountID, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Рассчитываем аналитику
+	analytics := struct {
+		TotalTransactions int                  `json:"total_transactions"`
+		TotalDeposits     float64              `json:"total_deposits"`
+		TotalWithdrawals  float64              `json:"total_withdrawals"`
+		Transactions      []models.Transaction `json:"transactions"`
+	}{
+		Transactions: transactions,
+	}
+
+	for _, t := range transactions {
+		analytics.TotalTransactions++
+		if t.Amount > 0 {
+			analytics.TotalDeposits += t.Amount
+		} else {
+			analytics.TotalWithdrawals += t.Amount
+		}
+	}
+
+	utils.RespondJSON(w, http.StatusOK, analytics)
 }
