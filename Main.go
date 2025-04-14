@@ -7,19 +7,35 @@ import (
 	"final-project/repositories"
 	"final-project/scheduler"
 	"final-project/services"
-	"log"
-	"net/http"
-	"os"
-
+	"final-project/utils" // Добавлен импорт
+	"fmt"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	"log"
+	"net/http"
+)
+
+const (
+	host     = "localhost"
+	port     = 5432
+	user     = "postgres"
+	password = "PAASSSSSSSS"
+	dbname   = "finance"
 )
 
 func main() {
+
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+	// Инициализация логгера
+	utils.InitLogger()
+	utils.Logger.Info("Starting application...")
+
 	// Подключение к БД
-	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+		utils.Logger.Fatal("Failed to connect to database:", err)
 	}
 	defer db.Close()
 
@@ -78,6 +94,6 @@ func main() {
 	api.HandleFunc("/credits/{creditId}/schedule", loanHandler.GetPaymentSchedule).Methods("GET")
 	api.HandleFunc("/credits/process-payments", loanHandler.ProcessPayments).Methods("POST")
 
-	log.Println("Server is running on port 8080...")
+	utils.Logger.Info("Server is running on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
