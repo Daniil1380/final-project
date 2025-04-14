@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"final-project/models"
 	"final-project/utils"
+	"time"
 )
 
 // LoanRepository представляет собой репозиторий для работы с кредитами
@@ -189,4 +190,54 @@ func (r *LoanRepository) DeleteLoan(id int) error {
 	}
 
 	return nil
+}
+
+// GetActiveLoansDue получает кредиты со статусом "active", у которых дата следующего платежа меньше или равна dueDate
+func (r *LoanRepository) GetActiveLoansDue(dueDate time.Time) ([]*models.Loan, error) {
+	query := `
+                SELECT 
+                        id,
+                        user_id,
+                        account_id,
+                        amount,
+                        term,
+                        interest_rate,
+                        monthly_payment,
+                        status,
+                        created_at,
+                        next_payment_date
+                FROM loans
+                WHERE status = 'active' AND next_payment_date <= $1
+        `
+
+	rows, err := r.db.Query(query, dueDate)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var loans []*models.Loan
+	for rows.Next() {
+		var loan models.Loan
+		if err := rows.Scan(
+			&loan.ID,
+			&loan.UserID,
+			&loan.AccountID,
+			&loan.Amount,
+			&loan.Term,
+			&loan.InterestRate,
+			&loan.MonthlyPayment,
+			&loan.Status,
+			&loan.CreatedAt,
+			&loan.NextPaymentDate,
+		); err != nil {
+			return nil, err
+		}
+		loans = append(loans, &loan)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return loans, nil
 }

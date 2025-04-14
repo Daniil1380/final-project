@@ -77,3 +77,45 @@ func (s *LoanService) CreateLoan(userID, accountID int, amount float64, term int
 
 	return loan, nil
 }
+
+// ProcessCreditPayments проходит по активным кредитам, для которых наступила дата платежа,
+// и списывает ежемесячный платёж (при наличии достаточного баланса на счёте).
+// В случае недостатка средств начисляется штраф (+10% к сумме кредита).
+func (s *LoanService) ProcessCreditPayments() error {
+	// Предполагаем, что в репозитории LoanRepository реализован метод для получения просроченных платежей.
+	loans, err := s.LoanRepo.GetActiveLoansDue(time.Now())
+	if err != nil {
+		return err
+	}
+
+	for _, loan := range loans {
+		account, err := s.AccountRepo.GetAccountByID(loan.AccountID)
+		if err != nil {
+			continue
+		}
+
+		if account.Balance >= loan.MonthlyPayment {
+			// Списываем платёж
+			err = s.AccountRepo.UpdateBalance(loan.AccountID, -loan.MonthlyPayment)
+			if err != nil {
+				continue
+			}
+			// Обновляем дату следующего платежа (прибавляем 1 месяц)
+			loan.NextPaymentDate = loan.NextPaymentDate.AddDate(0, 1, 0)
+			// Если кредит погашается, можно обновить статус, здесь оставляем статус "active"
+			err = s.LoanRepo.UpdateLoan(loan)
+			if err != nil {
+				continue
+			}
+		} else {
+			// Недостаточно средств — начисляем штраф 10%
+			penalty := loan.MonthlyPayment * 0.10
+			loan.Amount = math.Round((loan.Amount+penalty)*100) / 100
+			err = s.LoanRepo.UpdateLoan(loan)
+			if err != nil {
+				continue
+			}
+		}
+	}
+	return nil
+}
