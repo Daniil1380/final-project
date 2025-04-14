@@ -46,8 +46,7 @@ func (s *LoanService) CreateLoan(userID, accountID int, amount float64, term int
 		return nil, errors.New("account does not belong to user")
 	}
 
-	// Базовая процентная ставка (можно сделать зависимой от суммы и срока)
-	interestRate := 12.5 // 12.5% годовых
+	interestRate, err := utils.GetCentralBankRate()
 
 	// Рассчитываем ежемесячный платеж
 	monthlyPayment := s.CalculateMonthlyPayment(amount, term, interestRate)

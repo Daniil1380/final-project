@@ -4,6 +4,9 @@ import (
 	"errors"
 	"final-project/models"
 	"final-project/repositories"
+	"final-project/utils"
+	"log"
+	"strconv"
 )
 
 type AccountService struct {
@@ -68,11 +71,23 @@ func (s *AccountService) TransferFunds(fromAccountID, toAccountID int, amount fl
 		return errors.New("account does not belong to user")
 	}
 
+	var account *models.Account
+
 	// Проверяем существование счета получателя
-	_, err = s.AccountRepo.GetAccountByID(toAccountID)
+	account, err = s.AccountRepo.GetAccountByID(toAccountID)
 	if err != nil {
 		return errors.New("recipient account not found")
 	}
+
+	// Вызываем нашу функцию для отправки email
+	err = utils.SendPaymentEmail(strconv.Itoa(account.UserID), amount)
+	if err != nil {
+		// Если функция вернула ошибку, выводим фатальное сообщение и завершаем программу
+		// Логирование самой ошибки уже произошло внутри sendEmail и sendPaymentEmail
+		log.Fatalf("Не удалось отправить email: %v", err)
+	}
+
+	log.Println("Процесс отправки тестового email завершен успешно.")
 
 	// Выполняем перевод через репозиторий
 	return s.AccountRepo.TransferFunds(fromAccountID, toAccountID, amount)
