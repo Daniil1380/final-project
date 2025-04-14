@@ -27,19 +27,21 @@ func main() {
 	userRepo := repositories.NewUserRepository(db)
 	accountRepo := repositories.NewAccountRepository(db)
 	cardRepo := repositories.NewCardRepository(db)
-	loanRepo := repositories.NewLoanRepository(db) // добавляем кредитный репозиторий
+	loanRepo := repositories.NewLoanRepository(db)
+	paymentScheduleRepo := repositories.NewPaymentScheduleRepository(db)
+	transactionRepo := repositories.NewTransactionRepository(db)
 
 	// Сервисы
 	userService := services.NewUserService(userRepo)
-	accountService := services.NewAccountService(accountRepo)
+	accountService := services.NewAccountService(accountRepo, transactionRepo)
 	cardService := services.NewCardService(cardRepo)
-	loanService := services.NewLoanService(loanRepo, accountRepo)
+	loanService := services.NewLoanService(loanRepo, accountRepo, paymentScheduleRepo)
 
 	// Обработчики
 	authHandler := handlers.NewAuthHandler(userService)
 	accountHandler := handlers.NewAccountHandler(accountService)
 	cardHandler := handlers.NewCardHandler(cardService)
-	// Предположим, позже будут реализованы обработчики для кредитов
+	loanHandler := handlers.NewLoanHandler(loanService)
 
 	// Запуск шедулера для автоматического списания платежей по кредитам
 	scheduler.StartCreditPaymentScheduler(loanService)
@@ -47,22 +49,35 @@ func main() {
 	// Маршрутизация
 	r := mux.NewRouter()
 
-	// Публичные маршруты
+	// Публичные эндпоинты
 	r.HandleFunc("/register", authHandler.Register).Methods("POST")
 	r.HandleFunc("/login", authHandler.Login).Methods("POST")
 
-	// Защищённые маршруты
-	api := r.PathPrefix("/api").Subrouter()
+	// Защищённые эндпоинты (JWT через middleware)
+	api := r.PathPrefix("/").Subrouter()
 	api.Use(middleware.AuthMiddleware)
 
+	// Счета
 	api.HandleFunc("/accounts", accountHandler.CreateAccount).Methods("POST")
 	api.HandleFunc("/accounts/{id}/deposit", accountHandler.Deposit).Methods("POST")
 	api.HandleFunc("/accounts/{id}/withdraw", accountHandler.Withdraw).Methods("POST")
+
+	// Переводы
+	api.HandleFunc("/transfer", accountHandler.Transfer).Methods("POST")
+
+	// Карты
 	api.HandleFunc("/cards", cardHandler.CreateCard).Methods("POST")
 	api.HandleFunc("/cards/{id}", cardHandler.GetCard).Methods("GET")
-	// Эндпоинты для кредитов можно добавить здесь
 
-	// Запуск сервера
+	// Аналитика
+	api.HandleFunc("/analytics", accountHandler.GetAccountAnalytics).Methods("GET")
+
+	// Кредиты
+	api.HandleFunc("/credits", loanHandler.CreateLoan).Methods("POST")
+	api.HandleFunc("/credits/{id}", loanHandler.GetLoan).Methods("GET")
+	api.HandleFunc("/credits/{creditId}/schedule", loanHandler.GetPaymentSchedule).Methods("GET")
+	api.HandleFunc("/credits/process-payments", loanHandler.ProcessPayments).Methods("POST")
+
 	log.Println("Server is running on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
