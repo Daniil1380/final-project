@@ -80,3 +80,37 @@ func (h *AccountHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 
 	utils.RespondJSON(w, http.StatusOK, map[string]string{"message": "Withdrawal successful"})
 }
+
+func (h *AccountHandler) Transfer(w http.ResponseWriter, r *http.Request) {
+	userID := utils.GetUserIDFromContext(r)
+
+	vars := mux.Vars(r)
+	fromAccountID, err := strconv.Atoi(vars["fromAccountID"])
+	if err != nil {
+		http.Error(w, "Invalid from account ID", http.StatusBadRequest)
+		return
+	}
+
+	toAccountID, err := strconv.Atoi(vars["toAccountID"])
+	if err != nil {
+		http.Error(w, "Invalid to account ID", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Amount float64 `json:"amount"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	err = h.AccountService.TransferFunds(fromAccountID, toAccountID, req.Amount, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	utils.RespondJSON(w, http.StatusOK, map[string]string{"message": "Transfer successful"})
+}
