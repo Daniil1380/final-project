@@ -17,12 +17,32 @@ func NewUserService(userRepo *repositories.UserRepository) *UserService {
 	return &UserService{UserRepo: userRepo}
 }
 
-// Регистрация нового пользователя
 func (s *UserService) RegisterUser(username, email, password string) (*models.User, error) {
-	// Проверяем, существует ли пользователь
+	// Проверяем email
 	existingUser, _ := s.UserRepo.GetUserByEmail(email)
 	if existingUser != nil {
 		return nil, errors.New("user with this email already exists")
+	}
+
+	// Проверяем username
+	existingUserByName, _ := s.UserRepo.GetUserByUsername(username)
+	if existingUserByName != nil {
+		return nil, errors.New("username already taken")
+	}
+
+	// Минимальные требования к паролю
+	if len(password) < 8 {
+		return nil, errors.New("password must be at least 8 characters long")
+	}
+
+	user := &models.User{
+		Username: username,
+		Email:    email,
+	}
+
+	// Валидация модели
+	if err := user.Validate(); err != nil {
+		return nil, err
 	}
 
 	// Хешируем пароль
@@ -30,12 +50,7 @@ func (s *UserService) RegisterUser(username, email, password string) (*models.Us
 	if err != nil {
 		return nil, err
 	}
-
-	user := &models.User{
-		Username: username,
-		Email:    email,
-		Password: string(hashedPassword),
-	}
+	user.Password = string(hashedPassword)
 
 	// Создаём пользователя в БД
 	err = s.UserRepo.CreateUser(user)

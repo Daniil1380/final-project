@@ -42,3 +42,26 @@ func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 
 	return &user, nil
 }
+
+func (r *UserRepository) GetUserByUsername(username string) (*models.User, error) {
+	var user models.User
+
+	query := "SELECT id, username, email, password, created_at, updated_at FROM users WHERE username = $1"
+	err := r.DB.QueryRow(query, username).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.Password,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // Пользователь не найден
+		}
+		return nil, err // Другая ошибка БД
+	}
+
+	return &user, nil
+}

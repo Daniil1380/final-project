@@ -1,6 +1,8 @@
 package models
 
 import (
+	"errors"
+	"strings"
 	"time"
 )
 
@@ -12,4 +14,18 @@ type User struct {
 	Password  string    `json:"-"` // Хешированный пароль
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (u *User) Validate() error {
+	// Проверка email
+	if !strings.Contains(u.Email, "@") {
+		return errors.New("invalid email format")
+	}
+
+	// Проверка имени пользователя
+	if len(u.Username) < 3 {
+		return errors.New("username must be at least 3 characters")
+	}
+
+	return nil
 }

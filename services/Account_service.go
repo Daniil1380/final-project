@@ -51,3 +51,29 @@ func (s *AccountService) Withdraw(accountID int, amount float64) error {
 
 	return s.AccountRepo.UpdateBalance(accountID, -amount)
 }
+
+func (s *AccountService) TransferFunds(fromAccountID, toAccountID int, amount float64, userID int) error {
+	// Проверяем, что сумма положительная
+	if amount <= 0 {
+		return errors.New("transfer amount must be positive")
+	}
+
+	// Проверяем, принадлежит ли счет пользователю
+	fromAccount, err := s.AccountRepo.GetAccountByID(fromAccountID)
+	if err != nil {
+		return err
+	}
+
+	if fromAccount.UserID != userID {
+		return errors.New("account does not belong to user")
+	}
+
+	// Проверяем существование счета получателя
+	_, err = s.AccountRepo.GetAccountByID(toAccountID)
+	if err != nil {
+		return errors.New("recipient account not found")
+	}
+
+	// Выполняем перевод через репозиторий
+	return s.AccountRepo.TransferFunds(fromAccountID, toAccountID, amount)
+}

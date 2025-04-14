@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"database/sql"
+	"errors"
 	"final-project/models"
 )
 
@@ -38,4 +39,40 @@ func (r *AccountRepository) UpdateBalance(accountID int, amount float64) error {
 	query := `UPDATE accounts SET balance = balance + $1 WHERE id = $2`
 	_, err := r.DB.Exec(query, amount, accountID)
 	return err
+}
+
+func (r *AccountRepository) TransferFunds(fromID, toID int, amount float64) error {
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Проверяем баланс отправителя
+	var balance float64
+	err = tx.QueryRow("SELECT balance FROM accounts WHERE id = $1 FOR UPDATE", fromID).Scan(&balance)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if balance < amount {
+		tx.Rollback()
+		return errors.New("insufficient funds")
+	}
+
+	// Списываем со счета отправителя
+	_, err = tx.Exec("UPDATE accounts SET balance = balance - $1 WHERE id = $2", amount, fromID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Пополняем счет получателя
+	_, err = tx.Exec("UPDATE accounts SET balance = balance + $1 WHERE id = $2", amount, toID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }

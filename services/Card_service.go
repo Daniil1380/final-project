@@ -7,6 +7,9 @@ import (
 	"final-project/models"
 	"final-project/repositories"
 	"golang.org/x/crypto/bcrypt"
+	"math/rand"
+	"strconv"
+	"time"
 )
 
 type CardService struct {
@@ -50,4 +53,44 @@ func (s *CardService) CreateCard(accountID int, cvv string) (*models.Card, error
 	}
 
 	return card, nil
+}
+
+func GenerateCardNumber() (string, error) {
+	// Префикс Visa
+	prefix := "4"
+
+	// Генерируем случайные цифры (всего 16 цифр, первая уже есть)
+	rand.Seed(time.Now().UnixNano())
+	digits := make([]int, 15)
+	for i := 0; i < 15; i++ {
+		digits[i] = rand.Intn(10)
+	}
+
+	// Конвертируем в строку
+	cardNumberStr := prefix
+	for _, digit := range digits {
+		cardNumberStr += strconv.Itoa(digit)
+	}
+
+	// Проверяем по алгоритму Луна
+	cardNumber := cardNumberStr[:15]
+	sum := 0
+
+	for i := len(cardNumber) - 1; i >= 0; i-- {
+		digit, _ := strconv.Atoi(string(cardNumber[i]))
+
+		if (len(cardNumber)-i)%2 == 0 {
+			digit *= 2
+			if digit > 9 {
+				digit -= 9
+			}
+		}
+
+		sum += digit
+	}
+
+	// Вычисляем контрольную цифру
+	checkDigit := (10 - (sum % 10)) % 10
+
+	return cardNumberStr + strconv.Itoa(checkDigit), nil
 }
