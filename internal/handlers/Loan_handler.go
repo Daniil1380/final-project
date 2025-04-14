@@ -70,3 +70,19 @@ func (h *LoanHandler) ProcessPayments(w http.ResponseWriter, r *http.Request) {
 
 	utils.RespondJSON(w, http.StatusOK, map[string]string{"message": "Payments processed successfully"})
 }
+
+func (h *LoanHandler) GetPaymentSchedule(w http.ResponseWriter, r *http.Request) {
+	creditID, err := strconv.Atoi(mux.Vars(r)["creditId"])
+	if err != nil {
+		http.Error(w, "Invalid credit ID", http.StatusBadRequest)
+		return
+	}
+
+	schedule, err := h.LoanService.GetPaymentSchedule(creditID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError) // Or StatusNotFound if appropriate
+		return
+	}
+
+	utils.RespondJSON(w, http.StatusOK, schedule)
+}

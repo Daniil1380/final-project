@@ -78,6 +78,24 @@ func (s *LoanService) CreateLoan(userID, accountID int, amount float64, term int
 		return nil, err
 	}
 
+	// Create Payment Schedule
+	for i := 1; i <= loan.Term; i++ {
+		dueDate := time.Now().AddDate(0, i, 0) // Calculate due date for each month
+
+		schedule := &models.PaymentSchedule{
+			CreditID: loan.ID,
+			Amount:   loan.MonthlyPayment,
+			DueDate:  dueDate,
+			Status:   "pending", // Initial status
+		}
+
+		err = s.ScheduleRepo.CreatePaymentSchedule(schedule)
+		if err != nil {
+			utils.Logger.WithError(err).Error("Failed to create payment schedule")
+			return nil, err // Or consider logging and continuing
+		}
+	}
+
 	return loan, nil
 }
 
@@ -121,4 +139,13 @@ func (s *LoanService) ProcessCreditPayments() error {
 		}
 	}
 	return nil
+}
+
+// GetPaymentSchedule retrieves the payment schedule for a given credit ID.
+func (s *LoanService) GetPaymentSchedule(creditID int) ([]models.PaymentSchedule, error) {
+	schedule, err := s.ScheduleRepo.GetPaymentSchedule(creditID)
+	if err != nil {
+		return nil, err
+	}
+	return schedule, nil
 }
