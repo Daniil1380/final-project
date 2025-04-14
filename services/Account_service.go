@@ -7,14 +7,19 @@ import (
 	"final-project/utils"
 	"log"
 	"strconv"
+	"time"
 )
 
 type AccountService struct {
-	AccountRepo *repositories.AccountRepository
+	AccountRepo     *repositories.AccountRepository
+	TransactionRepo *repositories.TransactionRepository
 }
 
-func NewAccountService(accountRepo *repositories.AccountRepository) *AccountService {
-	return &AccountService{AccountRepo: accountRepo}
+func NewAccountService(accountRepo *repositories.AccountRepository, transactionRepo *repositories.TransactionRepository) *AccountService {
+	return &AccountService{
+		AccountRepo:     accountRepo,
+		TransactionRepo: transactionRepo,
+	}
 }
 
 // Создание нового счета
@@ -38,7 +43,22 @@ func (s *AccountService) Deposit(accountID int, amount float64) error {
 	if amount <= 0 {
 		return errors.New("deposit amount must be positive")
 	}
-	return s.AccountRepo.UpdateBalance(accountID, amount)
+
+	// Обновление баланса
+	err := s.AccountRepo.UpdateBalance(accountID, amount)
+	if err != nil {
+		return err
+	}
+
+	// Сохранение транзакции
+	transaction := &models.Transaction{
+		ID:        accountID,
+		Amount:    amount,
+		Type:      "deposit",
+		CreatedAt: time.Now(),
+	}
+
+	return s.TransactionRepo.CreateTransaction(transaction)
 }
 
 // Списание средств
@@ -52,7 +72,21 @@ func (s *AccountService) Withdraw(accountID int, amount float64) error {
 		return errors.New("insufficient funds")
 	}
 
-	return s.AccountRepo.UpdateBalance(accountID, -amount)
+	// Обновление баланса
+	err = s.AccountRepo.UpdateBalance(accountID, -amount)
+	if err != nil {
+		return err
+	}
+
+	// Сохранение транзакции
+	transaction := &models.Transaction{
+		ID:        accountID,
+		Amount:    -amount,
+		Type:      "withdraw",
+		CreatedAt: time.Now(),
+	}
+
+	return s.TransactionRepo.CreateTransaction(transaction)
 }
 
 func (s *AccountService) TransferFunds(fromAccountID, toAccountID int, amount float64, userID int) error {
@@ -90,5 +124,32 @@ func (s *AccountService) TransferFunds(fromAccountID, toAccountID int, amount fl
 	log.Println("Процесс отправки тестового email завершен успешно.")
 
 	// Выполняем перевод через репозиторий
-	return s.AccountRepo.TransferFunds(fromAccountID, toAccountID, amount)
+	err = s.AccountRepo.TransferFunds(fromAccountID, toAccountID, amount)
+	if err != nil {
+		return err
+	}
+
+	// Сохранение транзакций
+	// Транзакция списания
+	outTransaction := &models.Transaction{
+		ID:        fromAccountID,
+		Amount:    -amount,
+		Type:      "transfer_out",
+		CreatedAt: time.Now(),
+	}
+
+	err = s.TransactionRepo.CreateTransaction(outTransaction)
+	if err != nil {
+		return err
+	}
+
+	// Транзакция зачисления
+	inTransaction := &models.Transaction{
+		ID:        toAccountID,
+		Amount:    amount,
+		Type:      "transfer_in",
+		CreatedAt: time.Now(),
+	}
+
+	return s.TransactionRepo.CreateTransaction(inTransaction)
 }
